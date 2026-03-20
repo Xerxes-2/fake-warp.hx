@@ -16,6 +16,8 @@ It hooks into two events:
 - **cursor movement** — if the current mode uses a block cursor, briefly flash
   a non-block shape
 
+![Demo](demo.mp4)
+
 ## Requirements
 
 - Helix built with the Steel event system. See [`STEEL.md`](https://github.com/mattwparas/helix/blob/steel-event-system/STEEL.md).
