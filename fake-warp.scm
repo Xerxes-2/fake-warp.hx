@@ -34,7 +34,8 @@
   (set! *shapes-loaded* #t))
 
 (define (ensure-shapes-loaded!)
-  (unless *shapes-loaded* (reload-shapes!)))
+  (unless *shapes-loaded*
+    (reload-shapes!)))
 
 ;; ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -62,46 +63,45 @@
   (cursor-shape #:normal *shape-normal* #:insert *shape-insert* #:select *shape-select*))
 
 (define (apply-shapes-with-override! mode-sym override)
-  (cursor-shape
-    #:normal (if (equal? mode-sym 'normal) override *shape-normal*)
-    #:insert (if (equal? mode-sym 'insert) override *shape-insert*)
-    #:select (if (equal? mode-sym 'select) override *shape-select*)))
+  (cursor-shape #:normal (if (equal? mode-sym 'normal) override *shape-normal*)
+                #:insert (if (equal? mode-sym 'insert) override *shape-insert*)
+                #:select (if (equal? mode-sym 'select) override *shape-select*)))
 
 ;; ─── Hooks ───────────────────────────────────────────────────────────────────
 
 (define (register-fake-warp-hooks!)
   ;; On mode switch: if either side is block, flash an intermediate shape.
   (register-hook! "on-mode-switch"
-    (lambda (event)
-      (ensure-shapes-loaded!)
-      (when (not *animating*)
-        (let* ([old-mode  (mode->sym (mode-switch-old event))]
-               [new-mode  (mode->sym (mode-switch-new event))]
-               [old-shape (shape-for-mode old-mode)]
-               [new-shape (shape-for-mode new-mode)])
-          (when (or (equal? old-shape 'block) (equal? new-shape 'block))
-            (let ([mid (intermediate-shape old-shape new-shape)])
-              (set! *animating* #t)
-              (apply-shapes-with-override! new-mode mid)
-              (enqueue-thread-local-callback-with-delay *flash-ms*
-                (lambda ()
-                  (apply-canonical-shapes!)
-                  (set! *animating* #f)))))))))
+                  (lambda (event)
+                    (ensure-shapes-loaded!)
+                    (when (not *animating*)
+                      (let* ([old-mode (mode->sym (mode-switch-old event))]
+                             [new-mode (mode->sym (mode-switch-new event))]
+                             [old-shape (shape-for-mode old-mode)]
+                             [new-shape (shape-for-mode new-mode)])
+                        (when (or (equal? old-shape 'block) (equal? new-shape 'block))
+                          (let ([mid (intermediate-shape old-shape new-shape)])
+                            (set! *animating* #t)
+                            (apply-shapes-with-override! new-mode mid)
+                            (enqueue-thread-local-callback-with-delay *flash-ms*
+                                                                      (lambda ()
+                                                                        (apply-canonical-shapes!)
+                                                                        (set! *animating* #f)))))))))
 
   ;; On cursor move: if current shape is block, briefly flash a non-block shape.
   (register-hook! "selection-did-change"
-    (lambda (_view-id)
-      (ensure-shapes-loaded!)
-      (when (not *animating*)
-        (let* ([mode  (mode->sym (editor-mode))]
-               [shape (shape-for-mode mode)])
-          (when (equal? shape 'block)
-            (set! *animating* #t)
-            (apply-shapes-with-override! mode (intermediate-shape shape shape))
-            (enqueue-thread-local-callback-with-delay *flash-ms*
-              (lambda ()
-                (apply-canonical-shapes!)
-                (set! *animating* #f)))))))))
+                  (lambda (_view-id)
+                    (ensure-shapes-loaded!)
+                    (when (not *animating*)
+                      (let* ([mode (mode->sym (editor-mode))]
+                             [shape (shape-for-mode mode)])
+                        (when (equal? shape 'block)
+                          (set! *animating* #t)
+                          (apply-shapes-with-override! mode (intermediate-shape shape shape))
+                          (enqueue-thread-local-callback-with-delay *flash-ms*
+                                                                    (lambda ()
+                                                                      (apply-canonical-shapes!)
+                                                                      (set! *animating* #f)))))))))
 
 ;; ─── Entry point ─────────────────────────────────────────────────────────────
 
