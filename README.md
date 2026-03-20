@@ -16,7 +16,7 @@ It hooks into two events:
 - **cursor movement** — if the current mode uses a block cursor, briefly flash
   a non-block shape
 
-![Demo](demo.mp4)
+https://github.com/Xerxes-2/fake-warp.hx/raw/refs/heads/master/demo.mp4
 
 ## Requirements
 
