@@ -77,54 +77,47 @@
 (define (flash-one-shape! mode-sym shape)
   (set! *animating* #t)
   (apply-shapes-with-override! mode-sym shape)
-  (enqueue-thread-local-callback-with-delay *flash-ms*
-                                            (lambda ()
-                                              (finish-animation!))))
+  (enqueue-thread-local-callback-with-delay *flash-ms* (lambda () (finish-animation!))))
 
 (define (flash-two-shapes! mode-sym first second)
   (set! *animating* #t)
   (apply-shapes-with-override! mode-sym first)
-  (enqueue-thread-local-callback-with-delay *flash-ms*
-                                            (lambda ()
-                                              (apply-shapes-with-override! mode-sym second)
-                                              (enqueue-thread-local-callback-with-delay *flash-ms*
-                                                                                        (lambda ()
-                                                                                          (finish-animation!))))))
+  (enqueue-thread-local-callback-with-delay
+   *flash-ms*
+   (lambda ()
+     (apply-shapes-with-override! mode-sym second)
+     (enqueue-thread-local-callback-with-delay *flash-ms* (lambda () (finish-animation!))))))
 
 ;; ─── Hooks ───────────────────────────────────────────────────────────────────
 
 (define (register-fake-warp-hooks!)
   ;; On mode switch: if either side is block, flash one or more intermediate
   ;; shapes to force a visible terminal cursor transition.
-  (register-hook! "on-mode-switch"
-                  (lambda (event)
-                    (ensure-shapes-loaded!)
-                    (when (not *animating*)
-                      (let* ([old-mode (mode->sym (mode-switch-old event))]
-                             [new-mode (mode->sym (mode-switch-new event))]
-                             [old-shape (shape-for-mode old-mode)]
-                             [new-shape (shape-for-mode new-mode)])
-                        (when (or (equal? old-shape 'block) (equal? new-shape 'block))
-                          (cond
-                            [(and (equal? old-shape 'block)
-                                  (equal? new-shape 'block))
-                             (let ([first (intermediate-shape old-shape new-shape)])
-                               (flash-two-shapes! new-mode
-                                                  first
-                                                  (secondary-intermediate-shape first)))]
-                            [else
-                             (flash-one-shape! new-mode
-                                               (intermediate-shape old-shape new-shape))])))))))
+  (register-hook!
+   "on-mode-switch"
+   (lambda (event)
+     (ensure-shapes-loaded!)
+     (when (not *animating*)
+       (let* ([old-mode (mode->sym (mode-switch-old event))]
+              [new-mode (mode->sym (mode-switch-new event))]
+              [old-shape (shape-for-mode old-mode)]
+              [new-shape (shape-for-mode new-mode)])
+         (when (or (equal? old-shape 'block) (equal? new-shape 'block))
+           (cond
+             [(and (equal? old-shape 'block) (equal? new-shape 'block))
+              (let ([first (intermediate-shape old-shape new-shape)])
+                (flash-two-shapes! new-mode first (secondary-intermediate-shape first)))]
+             [else (flash-one-shape! new-mode (intermediate-shape old-shape new-shape))])))))))
 
-  ;; On cursor move: if current shape is block, briefly flash a non-block shape.
-  (register-hook! "selection-did-change"
-                  (lambda (_view-id)
-                    (ensure-shapes-loaded!)
-                    (when (not *animating*)
-                      (let* ([mode (mode->sym (editor-mode))]
-                             [shape (shape-for-mode mode)])
-                        (when (equal? shape 'block)
-                          (flash-one-shape! mode (intermediate-shape shape shape)))))))
+;; On cursor move: if current shape is block, briefly flash a non-block shape.
+(register-hook! "selection-did-change"
+                (lambda (_view-id)
+                  (ensure-shapes-loaded!)
+                  (when (not *animating*)
+                    (let* ([mode (mode->sym (editor-mode))]
+                           [shape (shape-for-mode mode)])
+                      (when (equal? shape 'block)
+                        (flash-one-shape! mode (intermediate-shape shape shape)))))))
 
 ;; ─── Entry point ─────────────────────────────────────────────────────────────
 
