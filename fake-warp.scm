@@ -59,6 +59,9 @@
     [(and (not (equal? a 'underline)) (not (equal? b 'underline))) 'underline]
     [else 'bar]))
 
+(define (secondary-intermediate-shape first)
+  (if (equal? first 'bar) 'underline 'bar))
+
 (define (apply-canonical-shapes!)
   (cursor-shape #:normal *shape-normal* #:insert *shape-insert* #:select *shape-select*))
 
@@ -67,10 +70,32 @@
                 #:insert (if (equal? mode-sym 'insert) override *shape-insert*)
                 #:select (if (equal? mode-sym 'select) override *shape-select*)))
 
+(define (finish-animation!)
+  (apply-canonical-shapes!)
+  (set! *animating* #f))
+
+(define (flash-one-shape! mode-sym shape)
+  (set! *animating* #t)
+  (apply-shapes-with-override! mode-sym shape)
+  (enqueue-thread-local-callback-with-delay *flash-ms*
+                                            (lambda ()
+                                              (finish-animation!))))
+
+(define (flash-two-shapes! mode-sym first second)
+  (set! *animating* #t)
+  (apply-shapes-with-override! mode-sym first)
+  (enqueue-thread-local-callback-with-delay *flash-ms*
+                                            (lambda ()
+                                              (apply-shapes-with-override! mode-sym second)
+                                              (enqueue-thread-local-callback-with-delay *flash-ms*
+                                                                                        (lambda ()
+                                                                                          (finish-animation!))))))
+
 ;; ─── Hooks ───────────────────────────────────────────────────────────────────
 
 (define (register-fake-warp-hooks!)
-  ;; On mode switch: if either side is block, flash an intermediate shape.
+  ;; On mode switch: if either side is block, flash one or more intermediate
+  ;; shapes to force a visible terminal cursor transition.
   (register-hook! "on-mode-switch"
                   (lambda (event)
                     (ensure-shapes-loaded!)
@@ -80,13 +105,16 @@
                              [old-shape (shape-for-mode old-mode)]
                              [new-shape (shape-for-mode new-mode)])
                         (when (or (equal? old-shape 'block) (equal? new-shape 'block))
-                          (let ([mid (intermediate-shape old-shape new-shape)])
-                            (set! *animating* #t)
-                            (apply-shapes-with-override! new-mode mid)
-                            (enqueue-thread-local-callback-with-delay *flash-ms*
-                                                                      (lambda ()
-                                                                        (apply-canonical-shapes!)
-                                                                        (set! *animating* #f)))))))))
+                          (cond
+                            [(and (equal? old-shape 'block)
+                                  (equal? new-shape 'block))
+                             (let ([first (intermediate-shape old-shape new-shape)])
+                               (flash-two-shapes! new-mode
+                                                  first
+                                                  (secondary-intermediate-shape first)))]
+                            [else
+                             (flash-one-shape! new-mode
+                                               (intermediate-shape old-shape new-shape))])))))))
 
   ;; On cursor move: if current shape is block, briefly flash a non-block shape.
   (register-hook! "selection-did-change"
@@ -96,12 +124,7 @@
                       (let* ([mode (mode->sym (editor-mode))]
                              [shape (shape-for-mode mode)])
                         (when (equal? shape 'block)
-                          (set! *animating* #t)
-                          (apply-shapes-with-override! mode (intermediate-shape shape shape))
-                          (enqueue-thread-local-callback-with-delay *flash-ms*
-                                                                    (lambda ()
-                                                                      (apply-canonical-shapes!)
-                                                                      (set! *animating* #f)))))))))
+                          (flash-one-shape! mode (intermediate-shape shape shape)))))))
 
 ;; ─── Entry point ─────────────────────────────────────────────────────────────
 

@@ -12,7 +12,9 @@ animation.
 It hooks into two events:
 
 - **mode switch** — if either the outgoing or incoming mode uses a block cursor,
-  flash an intermediate shape (bar or underline) for a short duration
+  flash an intermediate shape (bar or underline) for a short duration; when
+  switching between two block modes, it flashes two intermediate shapes so the
+  transition still feels confirmed
 - **cursor movement** — if the current mode uses a block cursor, briefly flash
   a non-block shape
 
