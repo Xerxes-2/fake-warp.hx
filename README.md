@@ -7,7 +7,8 @@ involved.
 Helix's block cursor is rendered as a styled cell rather than the native
 terminal cursor, so the terminal's blink/warp animation never resets on its own.
 This plugin forces a shape transition to make the terminal redraw its cursor
-animation. Particularly useful with Ghostty's custom shader cursor animations.
+animation. Particularly useful with Ghostty's custom shader cursor animations
+(e.g. [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders)).
 
 It hooks into two events:
 
