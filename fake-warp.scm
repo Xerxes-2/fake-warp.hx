@@ -88,44 +88,47 @@
      (apply-shapes-with-override! mode-sym second)
      (enqueue-thread-local-callback-with-delay *flash-ms* finish-animation!))))
 
-;; ─── Hooks ───────────────────────────────────────────────────────────────────
-
-(define (register-fake-warp-hooks!)
-  ;; On mode switch: if either side is block, flash one or more intermediate
-  ;; shapes to force a visible terminal cursor transition.
-  (register-hook!
-   "on-mode-switch"
-   (lambda (event)
-     (ensure-shapes-loaded!)
-     (unless *animating*
-       (let* ([old-mode (mode->sym (mode-switch-old event))]
-              [new-mode (mode->sym (mode-switch-new event))]
-              [old-shape (shape-for-mode old-mode)]
-              [new-shape (shape-for-mode new-mode)])
-         (when (or (equal? old-shape 'block) (equal? new-shape 'block))
-           (cond
-             [(and (equal? old-shape 'block) (equal? new-shape 'block))
-              (let ([first (intermediate-shape old-shape new-shape)])
-                (flash-two-shapes! new-mode first (secondary-intermediate-shape first)))]
-             [else (flash-one-shape! new-mode (intermediate-shape old-shape new-shape))]))))))
-
-  ;; On cursor move: if current shape is block, briefly flash a non-block shape.
-  (register-hook!
-   "selection-did-change"
-   (lambda (_view-id)
-     (ensure-shapes-loaded!)
-     (unless *animating*
-       (let* ([mode (mode->sym (editor-mode))]
-              [shape (shape-for-mode mode)])
-         (when (equal? shape 'block)
-           (flash-one-shape! mode (intermediate-shape shape shape))))))))
-
 ;; ─── Entry point ─────────────────────────────────────────────────────────────
-
-(define (install-fake-warp!)
+;;
+;; Call this from your init.scm. Both hooks are enabled by default.
+;; Pass #f to skip registering a hook you don't need, e.g.:
+;;
+;;   (install-fake-warp! #:mode-switch #f)   ; Kitty: position-only animation
+;;
+(define (install-fake-warp! #:mode-switch [mode-switch #t]
+                             #:selection-change [selection-change #t])
   (unless *fake-warp-installed*
     (set! *fake-warp-installed* #t)
-    (register-fake-warp-hooks!)
-    (set-status! "fake-warp loaded")))
 
-(install-fake-warp!)
+    ;; On mode switch: if either side is block, flash one or more intermediate
+    ;; shapes to force a visible terminal cursor transition.
+    (when mode-switch
+      (register-hook!
+       "on-mode-switch"
+       (lambda (event)
+         (ensure-shapes-loaded!)
+         (unless *animating*
+           (let* ([old-mode (mode->sym (mode-switch-old event))]
+                  [new-mode (mode->sym (mode-switch-new event))]
+                  [old-shape (shape-for-mode old-mode)]
+                  [new-shape (shape-for-mode new-mode)])
+             (when (or (equal? old-shape 'block) (equal? new-shape 'block))
+               (cond
+                 [(and (equal? old-shape 'block) (equal? new-shape 'block))
+                  (let ([first (intermediate-shape old-shape new-shape)])
+                    (flash-two-shapes! new-mode first (secondary-intermediate-shape first)))]
+                 [else (flash-one-shape! new-mode (intermediate-shape old-shape new-shape))])))))))
+
+    ;; On cursor move: if current shape is block, briefly flash a non-block shape.
+    (when selection-change
+      (register-hook!
+       "selection-did-change"
+       (lambda (_view-id)
+         (ensure-shapes-loaded!)
+         (unless *animating*
+           (let* ([mode (mode->sym (editor-mode))]
+                  [shape (shape-for-mode mode)])
+             (when (equal? shape 'block)
+               (flash-one-shape! mode (intermediate-shape shape shape))))))))
+
+    (set-status! "fake-warp loaded")))
