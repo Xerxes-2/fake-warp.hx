@@ -32,13 +32,23 @@ Install the package with Forge:
 forge pkg install --git https://github.com/Xerxes-2/fake-warp.hx.git
 ```
 
-Then load it from your Helix `init.scm`:
+Then load and install it from your Helix `init.scm`:
 
 ```scheme
 (require "fake-warp/fake-warp.scm")
+(install-fake-warp!)
 ```
 
-The plugin installs itself when required.
+Both hooks are enabled by default. Pass `#f` to skip a hook you don't need:
+
+```scheme
+; Kitty and similar terminals only animate cursor position, not shape changes —
+; the mode-switch hook is not useful there.
+(install-fake-warp! #:mode-switch #f)
+
+; Only mode-switch, no cursor-movement animation.
+(install-fake-warp! #:selection-change #f)
+```
 
 ## Notes
 
