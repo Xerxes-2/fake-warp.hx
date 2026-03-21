@@ -7,7 +7,7 @@ involved.
 Helix's block cursor is rendered as a styled cell rather than the native
 terminal cursor, so the terminal's blink/warp animation never resets on its own.
 This plugin forces a shape transition to make the terminal redraw its cursor
-animation.
+animation. Particularly useful with Ghostty's custom shader cursor animations.
 
 It hooks into two events:
 
@@ -42,8 +42,7 @@ Then load and install it from your Helix `init.scm`:
 Both hooks are enabled by default. Pass `#f` to skip a hook you don't need:
 
 ```scheme
-; Kitty and similar terminals only animate cursor position, not shape changes —
-; the mode-switch hook is not useful there.
+; Skip mode-switch animation, keep cursor-movement animation.
 (install-fake-warp! #:mode-switch #f)
 
 ; Only mode-switch, no cursor-movement animation.

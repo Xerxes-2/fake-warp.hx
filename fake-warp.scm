@@ -93,10 +93,9 @@
 ;; Call this from your init.scm. Both hooks are enabled by default.
 ;; Pass #f to skip registering a hook you don't need, e.g.:
 ;;
-;;   (install-fake-warp! #:mode-switch #f)   ; Kitty: position-only animation
+;;   (install-fake-warp! #:mode-switch #f)   ; skip mode-switch animation
 ;;
-(define (install-fake-warp! #:mode-switch [mode-switch #t]
-                             #:selection-change [selection-change #t])
+(define (install-fake-warp! #:mode-switch [mode-switch #t] #:selection-change [selection-change #t])
   (unless *fake-warp-installed*
     (set! *fake-warp-installed* #t)
 
@@ -121,14 +120,13 @@
 
     ;; On cursor move: if current shape is block, briefly flash a non-block shape.
     (when selection-change
-      (register-hook!
-       "selection-did-change"
-       (lambda (_view-id)
-         (ensure-shapes-loaded!)
-         (unless *animating*
-           (let* ([mode (mode->sym (editor-mode))]
-                  [shape (shape-for-mode mode)])
-             (when (equal? shape 'block)
-               (flash-one-shape! mode (intermediate-shape shape shape))))))))
+      (register-hook! "selection-did-change"
+                      (lambda (_view-id)
+                        (ensure-shapes-loaded!)
+                        (unless *animating*
+                          (let* ([mode (mode->sym (editor-mode))]
+                                 [shape (shape-for-mode mode)])
+                            (when (equal? shape 'block)
+                              (flash-one-shape! mode (intermediate-shape shape shape))))))))
 
     (set-status! "fake-warp loaded")))
