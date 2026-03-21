@@ -77,7 +77,7 @@
 (define (flash-one-shape! mode-sym shape)
   (set! *animating* #t)
   (apply-shapes-with-override! mode-sym shape)
-  (enqueue-thread-local-callback-with-delay *flash-ms* (lambda () (finish-animation!))))
+  (enqueue-thread-local-callback-with-delay *flash-ms* finish-animation!))
 
 (define (flash-two-shapes! mode-sym first second)
   (set! *animating* #t)
@@ -86,7 +86,7 @@
    *flash-ms*
    (lambda ()
      (apply-shapes-with-override! mode-sym second)
-     (enqueue-thread-local-callback-with-delay *flash-ms* (lambda () (finish-animation!))))))
+     (enqueue-thread-local-callback-with-delay *flash-ms* finish-animation!))))
 
 ;; ─── Hooks ───────────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@
    "on-mode-switch"
    (lambda (event)
      (ensure-shapes-loaded!)
-     (when (not *animating*)
+     (unless *animating*
        (let* ([old-mode (mode->sym (mode-switch-old event))]
               [new-mode (mode->sym (mode-switch-new event))]
               [old-shape (shape-for-mode old-mode)]
@@ -107,26 +107,25 @@
              [(and (equal? old-shape 'block) (equal? new-shape 'block))
               (let ([first (intermediate-shape old-shape new-shape)])
                 (flash-two-shapes! new-mode first (secondary-intermediate-shape first)))]
-             [else (flash-one-shape! new-mode (intermediate-shape old-shape new-shape))])))))))
+             [else (flash-one-shape! new-mode (intermediate-shape old-shape new-shape))]))))))
 
-;; On cursor move: if current shape is block, briefly flash a non-block shape.
-(register-hook! "selection-did-change"
-                (lambda (_view-id)
-                  (ensure-shapes-loaded!)
-                  (when (not *animating*)
-                    (let* ([mode (mode->sym (editor-mode))]
-                           [shape (shape-for-mode mode)])
-                      (when (equal? shape 'block)
-                        (flash-one-shape! mode (intermediate-shape shape shape)))))))
+  ;; On cursor move: if current shape is block, briefly flash a non-block shape.
+  (register-hook!
+   "selection-did-change"
+   (lambda (_view-id)
+     (ensure-shapes-loaded!)
+     (unless *animating*
+       (let* ([mode (mode->sym (editor-mode))]
+              [shape (shape-for-mode mode)])
+         (when (equal? shape 'block)
+           (flash-one-shape! mode (intermediate-shape shape shape))))))))
 
 ;; ─── Entry point ─────────────────────────────────────────────────────────────
 
 (define (install-fake-warp!)
-  (if *fake-warp-installed*
-      #f
-      (begin
-        (set! *fake-warp-installed* #t)
-        (register-fake-warp-hooks!)
-        (set-status! "fake-warp loaded"))))
+  (unless *fake-warp-installed*
+    (set! *fake-warp-installed* #t)
+    (register-fake-warp-hooks!)
+    (set-status! "fake-warp loaded")))
 
 (install-fake-warp!)
