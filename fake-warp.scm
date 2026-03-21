@@ -127,6 +127,4 @@
                           (let* ([mode (mode->sym (editor-mode))]
                                  [shape (shape-for-mode mode)])
                             (when (equal? shape 'block)
-                              (flash-one-shape! mode (intermediate-shape shape shape))))))))
-
-    (set-status! "fake-warp loaded")))
+                              (flash-one-shape! mode (intermediate-shape shape shape))))))))))
